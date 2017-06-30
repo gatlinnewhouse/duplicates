@@ -94,6 +94,25 @@ func visitFile(path string, f os.FileInfo, err error) error {
   return nil  
 }
 
+func findDuplicates(root string) {
+  filepath.Walk(root, visitFile)
+  computeHashes()
+  for _, v := range duplicates.m {
+    if (len(v) > 1) {
+      dupCount++ 
+    }
+  }
+  for _, v := range duplicates.m {
+    if (len(v) > 1) {
+      for _, file := range v {
+        fmt.Printf("%s\n", file)
+      }
+      fmt.Printf("\n")
+    }
+  }
+}
+
+
 func main() {
   flag.Int64Var(&minSize, "size", 1, "Minimum size in bytes for a file")
   flag.StringVar(&filenameMatch, "name", "*", "Filename pattern")
