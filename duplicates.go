@@ -15,7 +15,7 @@ import (
 
 type WalkedFile struct {
   path string
-  file os.FileInfo 
+  file os.FileInfo
 }
 
 var (
@@ -29,7 +29,7 @@ var (
   filenameRegex *regexp.Regexp
   duplicates = struct {
 	  sync.RWMutex
-	  m map[string][]string 
+	  m map[string][]string
   } {m: make(map[string][]string)}
   noStats bool
   walkProgress *Progress
@@ -46,20 +46,20 @@ func scanAndHashFile(path string, f os.FileInfo, progress *Progress) {
       md5 := md5.New()
       io.Copy(md5, file)
       var hash string = fmt.Sprintf("%x", md5.Sum(nil))
-      //fmt.Printf("%s\t%s\t%d bytes\n", path, hash, f.Size()) 
+      //fmt.Printf("%s\t%s\t%d bytes\n", path, hash, f.Size())
       file.Close()
       duplicates.Lock()
       duplicates.m[hash] =  append(duplicates.m[hash], path)
       duplicates.Unlock()
       progress.increment()
     }
-  }  
+  }
 }
 
 func worker(workerId int, jobs <-chan *WalkedFile, results chan<- int, progress *Progress) {
   for file := range jobs {
     //fmt.Println("hashing ", file.path, " on worker ", workerId)
-    scanAndHashFile(file.path, file.file, progress)  
+    scanAndHashFile(file.path, file.file, progress)
     results <- 0
   }
 }
@@ -71,7 +71,7 @@ func computeHashes() {
   if singleThread {
     go worker(1, jobs, results, walkProgress)
   } else {
-    for w := 1; w <= runtime.NumCPU(); w++ { 
+    for w := 1; w <= runtime.NumCPU(); w++ {
       go worker(w, jobs, results, walkProgress)
     }
   }
@@ -91,25 +91,22 @@ func visitFile(path string, f os.FileInfo, err error) error {
     walkFiles = append(walkFiles, &WalkedFile { path: path, file: f, })
     walkProgress.increment()
   }
-  return nil  
+  return nil
 }
 
-func findDuplicates(root string) {
+func findDuplicates(root string) []string {
+  var duppaths []string
   filepath.Walk(root, visitFile)
   computeHashes()
   for _, v := range duplicates.m {
     if (len(v) > 1) {
-      dupCount++ 
-    }
-  }
-  for _, v := range duplicates.m {
-    if (len(v) > 1) {
       for _, file := range v {
         fmt.Printf("%s\n", file)
+        duppaths = append(duppaths, file)
       }
-      fmt.Printf("\n")
     }
   }
+  return duppaths
 }
 
 
@@ -129,8 +126,8 @@ func main() {
   if (len(flag.Args()) < 1) {
     fmt.Fprintf(os.Stderr, "You have to specify at least a directory to explore ...\n")
     os.Exit(-1)
-  } 
-  root := flag.Arg(0) 
+  }
+  root := flag.Arg(0)
   walkProgress = creatProgress("Walking through %d files ...", &noStats)
   if !noStats {
     fmt.Printf("\nSearching duplicates in '%s' with name that match '%s' and minimum size '%d' bytes\n\n", root, filenameMatch, minSize)
@@ -142,7 +139,7 @@ func main() {
   computeHashes()
   for _, v := range duplicates.m {
     if (len(v) > 1) {
-      dupCount++ 
+      dupCount++
     }
   }
   if !noStats {
